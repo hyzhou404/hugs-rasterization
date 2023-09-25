@@ -204,6 +204,7 @@ int CudaRasterizer::Rasterizer::forward(
 	const int width, int height,
 	const float* means3D,
 	const float* shs,
+	const float* feats3D,
 	const float* colors_precomp,
 	const float* opacities,
 	const float* scales,
@@ -216,6 +217,7 @@ int CudaRasterizer::Rasterizer::forward(
 	const float tan_fovx, float tan_fovy,
 	const bool prefiltered,
 	float* out_color,
+	float* out_feats,
 	int* radii,
 	bool debug)
 {
@@ -326,11 +328,13 @@ int CudaRasterizer::Rasterizer::forward(
 		width, height,
 		geomState.means2D,
 		feature_ptr,
+		feats3D,
 		geomState.conic_opacity,
 		imgState.accum_alpha,
 		imgState.n_contrib,
 		background,
-		out_color), debug)
+		out_color,
+		out_feats), debug)
 
 	return num_rendered;
 }

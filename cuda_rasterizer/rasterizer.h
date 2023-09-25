@@ -37,6 +37,7 @@ namespace CudaRasterizer
 			const int width, int height,
 			const float* means3D,
 			const float* shs,
+			const float* feats3D,
 			const float* colors_precomp,
 			const float* opacities,
 			const float* scales,
@@ -49,6 +50,7 @@ namespace CudaRasterizer
 			const float tan_fovx, float tan_fovy,
 			const bool prefiltered,
 			float* out_color,
+			float* out_feats,
 			int* radii = nullptr,
 			bool debug = false);
 
