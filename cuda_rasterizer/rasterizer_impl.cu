@@ -348,6 +348,7 @@ void CudaRasterizer::Rasterizer::backward(
 	const float* means3D,
 	const float* shs,
 	const float* colors_precomp,
+	const float* feats3D,
 	const float* scales,
 	const float scale_modifier,
 	const float* rotations,
@@ -361,10 +362,12 @@ void CudaRasterizer::Rasterizer::backward(
 	char* binning_buffer,
 	char* img_buffer,
 	const float* dL_dpix,
+	const float* dL_dfeat2D,
 	float* dL_dmean2D,
 	float* dL_dconic,
 	float* dL_dopacity,
 	float* dL_dcolor,
+	float* dL_dfeat3D,
 	float* dL_dmean3D,
 	float* dL_dcov3D,
 	float* dL_dsh,
@@ -401,13 +404,16 @@ void CudaRasterizer::Rasterizer::backward(
 		geomState.means2D,
 		geomState.conic_opacity,
 		color_ptr,
+		feats3D,
 		imgState.accum_alpha,
 		imgState.n_contrib,
 		dL_dpix,
+		dL_dfeat2D,
 		(float3*)dL_dmean2D,
 		(float4*)dL_dconic,
 		dL_dopacity,
-		dL_dcolor), debug)
+		dL_dcolor,
+		dL_dfeat3D), debug)
 
 	// Take care of the rest of preprocessing. Was the precomputed covariance
 	// given to us or a scales/rot pair? If precomputed, pass that. If not,
