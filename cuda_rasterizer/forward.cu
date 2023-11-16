@@ -267,12 +267,14 @@ renderCUDA(
 	const float2* __restrict__ points_xy_image,
 	const float* __restrict__ features,
 	const float* __restrict__ feats3D,
+	const float* __restrict__ depths,
 	const float4* __restrict__ conic_opacity,
 	float* __restrict__ final_T,
 	uint32_t* __restrict__ n_contrib,
 	const float* __restrict__ bg_color,
 	float* __restrict__ out_color,
-	float* __restrict__ out_feats)
+	float* __restrict__ out_feats,
+	float* __restrict__ out_depth)
 {
 	// Identify current tile and associated min/max pixel range.
 	auto block = cg::this_thread_block();
@@ -304,6 +306,7 @@ renderCUDA(
 	uint32_t last_contributor = 0;
 	float C[CHANNELS] = { 0 };
 	float F[FEATS_CHANNELS] = { 0 };
+	float D = { 0 };
 
 	// Iterate over batches until all done or range is complete
 	for (int i = 0; i < rounds; i++, toDo -= BLOCK_SIZE)
@@ -358,6 +361,7 @@ renderCUDA(
 				C[ch] += features[collected_id[j] * CHANNELS + ch] * alpha * T;
 			for (int ch = 0; ch < FEATS_CHANNELS; ch++)
 				F[ch] += feats3D[collected_id[j] * FEATS_CHANNELS + ch] * alpha * T;
+			D += depths[collected_id[j]] * alpha * T;
 
 			T = test_T;
 
@@ -377,6 +381,7 @@ renderCUDA(
 			out_color[ch * H * W + pix_id] = C[ch] + T * bg_color[ch];
 		for (int ch = 0; ch < FEATS_CHANNELS; ch++)
 			out_feats[ch * H * W + pix_id] = F[ch];
+		out_depth[pix_id] = D;
 	}
 }
 
@@ -388,12 +393,14 @@ void FORWARD::render(
 	const float2* means2D,
 	const float* colors,
 	const float* feats3D,
+	const float* depths,
 	const float4* conic_opacity,
 	float* final_T,
 	uint32_t* n_contrib,
 	const float* bg_color,
 	float* out_color,
-	float* out_feats)
+	float* out_feats,
+	float* out_depth)
 {
 	renderCUDA<NUM_CHANNELS, NUM_FEATS_CHANNELS> << <grid, block >> > (
 		ranges,
@@ -402,12 +409,14 @@ void FORWARD::render(
 		means2D,
 		colors,
 		feats3D,
+		depths,
 		conic_opacity,
 		final_T,
 		n_contrib,
 		bg_color,
 		out_color,
-		out_feats);
+		out_feats,
+		out_depth);
 }
 
 void FORWARD::preprocess(int P, int D, int M,
