@@ -30,15 +30,18 @@ namespace BACKWARD
 		const float4* conic_opacity,
 		const float* colors,
 		const float* feats3D,
+		const float* delta,
 		const float* final_Ts,
 		const uint32_t* n_contrib,
 		const float* dL_dpixels,
 		const float* dL_dfeat2D,
+		const float* dL_dflow,
 		float3* dL_dmean2D,
 		float4* dL_dconic2D,
 		float* dL_dopacity,
 		float* dL_dcolors,
-		float* dL_dfeat3D);
+		float* dL_dfeat3D,
+		float* dL_ddelta);
 
 	void preprocess(
 		int P, int D, int M,

@@ -407,15 +407,18 @@ renderCUDA(
 	const float4* __restrict__ conic_opacity,
 	const float* __restrict__ colors,
 	const float* __restrict__ feats3D,
+	const float* __restrict__ delta,
 	const float* __restrict__ final_Ts,
 	const uint32_t* __restrict__ n_contrib,
 	const float* __restrict__ dL_dpixels,
 	const float* __restrict__ dL_dfeats2D,
+	const float* __restrict__ dL_dflow,
 	float3* __restrict__ dL_dmean2D,
 	float4* __restrict__ dL_dconic2D,
 	float* __restrict__ dL_dopacity,
 	float* __restrict__ dL_dcolors,
-	float* __restrict__ dL_dfeats3D)
+	float* __restrict__ dL_dfeats3D,
+	float* __restrict__ dL_ddelta)
 {
 	// We rasterize again. Compute necessary block info.
 	auto block = cg::this_thread_block();
@@ -439,6 +442,7 @@ renderCUDA(
 	__shared__ float4 collected_conic_opacity[BLOCK_SIZE];
 	__shared__ float collected_colors[C * BLOCK_SIZE];
 	__shared__ float collected_feats[FC * BLOCK_SIZE];
+	__shared__ float collected_delta[3 * BLOCK_SIZE];
 
 	// In the forward, we stored the final value for T, the
 	// product of all (1 - alpha) factors. 
@@ -454,6 +458,8 @@ renderCUDA(
 	float dL_dpixel[C];
 	float accum_feat_rec[FC] = { 0 };
 	float dL_dfeat[FC];
+	float accum_delta_rec[3] = { 0 };
+	float dL_df[3];
 	if (inside)
 	{
 		for (int i = 0; i < C; i++)
@@ -462,11 +468,16 @@ renderCUDA(
 		{
 			dL_dfeat[i] = dL_dfeats2D[i * H * W + pix_id];
 		}
+		for (int i = 0; i < 3; i++)
+		{
+			dL_df[i] = dL_dflow[i * H * W + pix_id];
+		}
 	}
 
 	float last_alpha = 0;
 	float last_color[C] = { 0 };
 	float last_feat[FC] = { 0 };
+	float last_delta[3] = { 0 };
 
 	// Gradient of pixel coordinate w.r.t. normalized 
 	// screen-space viewport corrdinates (-1 to 1)
@@ -491,6 +502,10 @@ renderCUDA(
 			for (int j = 0; j < FC; j++)
 			{
 				collected_feats[j * BLOCK_SIZE + block.thread_rank()] = feats3D[coll_id * FC + j];
+			}
+			for (int j = 0; j < 3; j++)
+			{
+				collected_delta[j * BLOCK_SIZE + block.thread_rank()] = delta[coll_id * 3 + j];
 			}
 		}
 		block.sync();
@@ -550,6 +565,18 @@ renderCUDA(
 				const float dL_dfchannel = dL_dfeat[ch];
 				dL_dalpha += (c_f - accum_feat_rec[ch]) * dL_dfchannel;
 				atomicAdd(&(dL_dfeats3D[global_id * FC + ch]), dchannel_dcolor * dL_dfchannel);
+			}
+
+			for (int ch = 0; ch < 3; ch++)
+			{
+				const float c_d = collected_delta[ch * BLOCK_SIZE + j];
+				// Update last color (to be used in the next iteration)
+				accum_delta_rec[ch] = last_alpha * last_delta[ch] + (1.f - last_alpha) * accum_delta_rec[ch];
+				last_delta[ch] = c_d;
+
+				const float dL_dfchannel = dL_df[ch];
+				dL_dalpha += (c_d - accum_delta_rec[ch]) * dL_dfchannel;
+				atomicAdd(&(dL_ddelta[global_id * 3 + ch]), dchannel_dcolor * dL_dfchannel);
 			}
 
 			dL_dalpha *= T;
@@ -661,15 +688,18 @@ void BACKWARD::render(
 	const float4* conic_opacity,
 	const float* colors,
 	const float* feats3D,
+	const float* delta,
 	const float* final_Ts,
 	const uint32_t* n_contrib,
 	const float* dL_dpixels,
 	const float* dL_dfeats2D,
+	const float* dL_dflow,
 	float3* dL_dmean2D,
 	float4* dL_dconic2D,
 	float* dL_dopacity,
 	float* dL_dcolors,
-	float* dL_dfeats3D)
+	float* dL_dfeats3D,
+	float* dL_ddelta)
 {
 	renderCUDA<NUM_CHANNELS, NUM_FEATS_CHANNELS> << <grid, block >> >(
 		ranges,
@@ -680,14 +710,17 @@ void BACKWARD::render(
 		conic_opacity,
 		colors,
 		feats3D,
+		delta,
 		final_Ts,
 		n_contrib,
 		dL_dpixels,
 		dL_dfeats2D,
+		dL_dflow,
 		dL_dmean2D,
 		dL_dconic2D,
 		dL_dopacity,
 		dL_dcolors,
-		dL_dfeats3D
+		dL_dfeats3D,
+		dL_ddelta
 		);
 }
