@@ -7,12 +7,13 @@ The code is built based on "3D Gaussian Splatting for Real-Time Rendering of Rad
 <section class="section" id="BibTeX">
   <div class="container is-max-desktop content">
     <h2 class="title">BibTeX</h2>
-    <pre><code>@article{zhou2024hugs,
+    <pre><code>
+    @article{zhou2024hugs,
       title={HUGS: Holistic Urban 3D Scene Understanding via Gaussian Splatting},
       author={Zhou, Hongyu and Shao, Jiahao and Xu, Lu and Bai, Dongfeng and Qiu, Weichao and Liu, Bingbing and Wang, Yue and Geiger, Andreas and Liao, Yiyi},
       journal={arXiv preprint arXiv:2403.12722},
       year={2024}
     }
-}</code></pre>
+</code></pre>
   </div>
 </section>
